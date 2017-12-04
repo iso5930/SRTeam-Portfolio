@@ -1,0 +1,61 @@
+/*!
+ * \file CollisionManager.h
+ * \date 2016/06/05 17:13
+ *
+ * \author π⁄¡§πŒ
+ * Contact: jmpark1125@gmail.com
+ *
+ * \brief 
+ *
+ * TODO: long description
+ *
+ * \note
+*/
+//! ¿Ã∞« ¥Á√È π∫ æµ∏¿Œ∞°?
+
+#ifndef CollisionManager_h__
+#define CollisionManager_h__
+
+#include "Client_Include.h"
+
+namespace ENGINE
+{
+	class CCollision;
+}
+class CCollisionManager
+{
+	DECLARE_SINGLETON(CCollisionManager)
+
+public:
+	enum eCollisionType
+	{
+		COLLISION_TYPE_TERRAIN,
+		COLLISION_TYPE_MOUSE,
+		COLLISION_TYPE_OBB
+	};
+
+private:
+	typedef map<eCollisionType, ENGINE::CCollision*> COLLISION_MAP;
+
+	// member variable
+private:
+	COLLISION_MAP m_CollisionMap;
+
+	// member function
+public:
+	HRESULT AddColObject(eCollisionType _eCollisionType, int _iVertexCountX = 0, int _iVertexCountZ = 0);
+	ENGINE::CCollision* CloneColObject(eCollisionType _eCollisionType);
+private:
+	void Release(void);
+
+	// getter & setter
+public:
+	// -
+
+	// constructor & destructor
+private:
+	explicit CCollisionManager(void);
+	~CCollisionManager(void);
+};
+
+#endif // CollisionManager_h__

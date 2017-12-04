@@ -1,0 +1,47 @@
+/*!
+ * \file TextureTerrain.h
+ * \date 2016/05/27 12:02
+ *
+ * \author ¹ÚÁ¤¹Î
+ * Contact: jmpark1125@gmail.com
+ *
+ * \brief 
+ *
+ * TODO: long description
+ *
+ * \note
+*/
+
+#ifndef TextureTerrain_h__
+#define TextureTerrain_h__
+
+#include "Engine_Include.h"
+#include "VIBuffer.h"
+
+BEGIN_NAMESPACE(ENGINE)
+class ENGINE_DLL_SPECIFIER CTextureTerrain : public CVIBuffer
+{
+	// member variable
+private:
+	// -
+
+	// member function
+public:
+	static CTextureTerrain* Create(DWORD _dwCountX, DWORD _dwCountZ, DWORD _dwInterval);
+private:
+	HRESULT Initialize(DWORD _dwCountX, DWORD _dwCountZ, DWORD _dwInterval);
+	DWORD* LoadTerrainImage(void);
+
+	// getter & setter
+public:
+	// -
+
+	// constructor & destructor
+private:
+	explicit CTextureTerrain(void);
+public:
+	virtual ~CTextureTerrain(void);
+};
+END_NAMESPACE
+
+#endif // TextureTerrain_h__

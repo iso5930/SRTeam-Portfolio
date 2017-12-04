@@ -1,0 +1,77 @@
+#include "stdafx.h"
+#include "LogoBack.h"
+#include "ResourceManager.h"
+#include "VIBuffer.h"
+#include "Texture.h"
+#include "TimeManager.h"
+#include "Export_Function.h"
+
+CLogoBack::CLogoBack(void)
+:m_pBuffer(NULL)
+,m_pTexture(NULL)
+,m_fFrameCount(0)
+,m_fFrameMax(0)
+{
+
+}
+
+CLogoBack::~CLogoBack(void)
+{
+	Release();
+}
+
+CLogoBack* CLogoBack::Create(void)
+{
+	CLogoBack* pInstance = new CLogoBack;
+	HRESULT hr = pInstance->Initialize();
+	if FAILED(hr)
+		SAFE_DELETE(pInstance);
+
+	return pInstance;
+}
+
+int CLogoBack::Update(void)
+{
+	//m_fFrameCount += m_fFrameMax * ENGINE::GetTimeDelta() * 0.5f;
+	//if (m_fFrameCount >= m_fFrameMax)
+		//m_fFrameCount = 0.f;
+
+	return 0;
+}
+
+void CLogoBack::Render(void)
+{
+	m_pTexture->Render((int)m_fFrameCount);
+	m_pBuffer->Render();
+}
+
+HRESULT CLogoBack::Initialize(void)
+{
+	HRESULT hr = AddComponent();
+	if FAILED(hr)
+		return hr;
+
+	m_fFrameMax = 38.f;
+
+	return S_OK;
+}
+
+HRESULT CLogoBack::AddComponent(void)
+{
+	ENGINE::CComponent* pComponent = NULL;
+
+	pComponent = ENGINE::GetResourceManager()->CloneResource(this, RESOURCE_TYPE_STATIC, L"Buffer_Rectangle_Texture");
+	m_pBuffer = static_cast<ENGINE::CVIBuffer*>(pComponent);
+	m_ComponentMap.insert(COMPONENT_MAP::value_type(L"Buffer", pComponent));
+
+	pComponent = ENGINE::GetResourceManager()->CloneResource(this, RESOURCE_TYPE_DYNAMIC, L"Texture_Logo");
+	m_pTexture = static_cast<ENGINE::CTexture*>(pComponent);
+	m_ComponentMap.insert(COMPONENT_MAP::value_type(L"Texture", pComponent));
+
+	return S_OK;
+}
+
+void CLogoBack::Release(void)
+{
+
+}

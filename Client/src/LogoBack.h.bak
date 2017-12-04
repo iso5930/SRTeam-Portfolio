@@ -1,0 +1,58 @@
+/*!
+ * \file LogoBack.h
+ * \date 2016/06/02 16:24
+ *
+ * \author 박정민
+ * Contact: jmpark1125@gmail.com
+ *
+ * \brief 
+ *
+ * TODO: long description
+ *
+ * \note
+*/
+//! add component를 game object의 기본 인터페이스로?
+
+#ifndef LogoBack_h__
+#define LogoBack_h__
+
+#include "Client_Include.h"
+#include "GameObject.h"
+
+namespace ENGINE
+{
+	class CVIBuffer;
+	class CTexture;
+}
+class CLogoBack : public ENGINE::CGameObject
+{
+	// member variable
+private:
+	ENGINE::CVIBuffer* m_pBuffer;
+	ENGINE::CTexture* m_pTexture;
+	float m_fFrameCount;
+	float m_fFrameMax;
+
+	// member function
+public:
+	static CLogoBack* Create(void);
+	virtual int Update(void);
+	virtual void Render(void);
+private:
+	virtual HRESULT Initialize(void);
+	HRESULT AddComponent(void);
+	virtual void Release(void);
+
+	// getter & setter
+public:
+	// -
+
+	// constructor & destructor
+private:
+	explicit CLogoBack(void);
+public:
+	~CLogoBack(void);
+	MAKE_UNCOPYABLE(CLogoBack)
+};
+
+#endif // LogoBack_h__

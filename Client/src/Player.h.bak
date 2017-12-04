@@ -1,0 +1,86 @@
+/*!
+ * \file Player.h
+ * \date 2016/05/25 13:44
+ *
+ * \author 박정민
+ * Contact: jmpark1125@gmail.com
+ *
+ * \brief 
+ *
+ * TODO: long description
+ *
+ * \note
+*/
+
+#ifndef Player_h__
+#define Player_h__
+
+#include "Client_Include.h"
+#include "GameObject.h"
+
+namespace ENGINE
+{
+	class CTransform;
+	class CVIBuffer;
+	class CTexture;
+
+	class CCameraObserver;
+
+	class CTerrainCollision;
+	class CMouseCollision;
+	class COBBCollision;
+}
+class CPlayer : public ENGINE::CGameObject
+{
+	// member variable
+private:
+	ENGINE::CTransform* m_pInfo;
+	ENGINE::CVIBuffer* m_pVIBuffer;
+	ENGINE::CTexture* m_pTexture;
+
+	ENGINE::CCameraObserver* m_pCameraObserver;
+
+	//! 이동하는 물체.. 에 관한 컴포넌트
+	float m_fSpeed;
+
+	const VERTEX_TEXTURE* m_pTerrainVertex;
+	ENGINE::CTerrainCollision* m_pTerrainCollision;
+
+	ENGINE::CMouseCollision* m_pMouseCollision;
+	D3DXVECTOR3 m_vDestPos;
+	bool m_bMove;
+
+	ENGINE::COBBCollision* m_pOBBCollision;
+
+	POINT	m_ptMouseScroll; // 마우스 위치를 기록하는 변수
+	bool	m_bKeyInput;
+	bool	m_bLeftTurnCheak;
+	bool	m_bRightTurnCheak;
+
+	// member function
+public:
+	static CPlayer* Create(void);
+	virtual int Update(void);
+	virtual void Render(void);
+private:
+	virtual HRESULT Initialize(void);
+	HRESULT AddComponent(void);
+	void KeyCheck(void);
+	void MouseScroll(void);
+	void SetDirection(void);
+	void Move(void);
+	virtual void Release(void);
+
+	// getter & setter
+public:
+	// -
+
+	// constructor & destructor
+private:
+	explicit CPlayer(void);
+public:
+	virtual ~CPlayer(void);
+MAKE_UNCOPYABLE(CPlayer)
+};
+
+#endif // Player_h__

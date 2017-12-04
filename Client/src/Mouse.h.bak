@@ -1,0 +1,26 @@
+/*!
+ * \file Mouse.h
+ * \date 2016/06/05 19:35
+ *
+ * \author 이진형
+ * Contact: user@company.com
+ *
+ * \brief 
+ *
+ * TODO: long description
+ *
+ * \note
+*/
+//! 이제 필요없게 된건가?
+
+#ifndef Mouse_h__
+#define Mouse_h__
+
+class CMouse abstract
+{
+public:
+	static const POINT			GetMousePoint(void);//반환 타입이 point
+	static const D3DXVECTOR3	GetMousePos(void);//반환타입이 벡터
+};
+
+#endif // Mouse_h__

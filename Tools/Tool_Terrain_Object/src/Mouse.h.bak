@@ -1,0 +1,22 @@
+/*!
+ * \file Mouse.h
+ * \date 2016/06/07 20:32
+ *
+ * \author ¼­ÇÏ´Ã
+ * Contact: user@company.com
+ *
+ * \brief 
+ *
+ * TODO: long description
+ *
+ * \note
+*/
+
+#pragma once
+
+class CMouse abstract
+{
+public:
+	static const POINT			GetMousePoint(void);
+	static const D3DXVECTOR3	GetMousePos(void);
+};

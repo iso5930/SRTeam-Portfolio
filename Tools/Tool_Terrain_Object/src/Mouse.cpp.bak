@@ -1,0 +1,26 @@
+#include "StdAfx.h"
+#include "Mouse.h"
+
+const POINT	CMouse::GetMousePoint(void)
+{
+	POINT	ptMouse;
+	GetCursorPos(&ptMouse);
+	ScreenToClient(g_hWnd, &ptMouse);
+
+	return ptMouse;
+}
+
+const D3DXVECTOR3 CMouse::GetMousePos(void)
+{
+	POINT	ptMouse;
+	GetCursorPos(&ptMouse);
+	ScreenToClient(g_hWnd, &ptMouse);
+
+	D3DXVECTOR3	vMousePos;
+
+	vMousePos.x = float(ptMouse.x);
+	vMousePos.y = float(ptMouse.y);
+	vMousePos.z = 0.f;
+
+	return vMousePos;
+}

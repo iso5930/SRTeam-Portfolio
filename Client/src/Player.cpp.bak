@@ -1,0 +1,401 @@
+#include "stdafx.h"
+#include "Player.h"
+
+#include "Export_Function.h"
+#include "Transform.h"
+#include "Texture.h"
+#include "CameraObserver.h"
+#include "Stage.h"
+#include "TerrainCollision.h"
+#include "MouseCollision.h"
+#include "OBBCollision.h"
+
+CPlayer::CPlayer(void)
+:m_pInfo(NULL)
+,m_pVIBuffer(NULL)
+,m_pTexture(NULL)
+,m_pCameraObserver(NULL)
+,m_fSpeed(0.f)
+,m_pTerrainCollision(NULL)
+,m_pTerrainVertex(NULL)
+,m_pMouseCollision(NULL)
+,m_vDestPos(0.f, 0.f, 0.f)
+,m_bMove(TRUE)
+,m_pOBBCollision(NULL)
+,m_bKeyInput(false)
+,m_bLeftTurnCheak(false)
+,m_bRightTurnCheak(false)
+{
+
+}
+
+CPlayer::~CPlayer(void)
+{
+	Release();
+}
+
+CPlayer* CPlayer::Create(void)
+{
+	CPlayer* pInstance = new CPlayer;
+	HRESULT hr = pInstance->Initialize();
+	if FAILED(hr)
+		SAFE_DELETE(pInstance);
+
+	return pInstance;
+}
+
+int CPlayer::Update(void)
+{
+	KeyCheck();
+	if(m_bKeyInput == false)
+		MouseScroll();
+	if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] >= 6.283f)
+		m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 0.f;
+	if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] <= -0.785375f)
+		m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 5.497625f;
+
+	m_pTerrainCollision->SetCollisionInfo(&m_pInfo->m_vPos);
+
+	SetDirection();
+
+	if (m_bMove)
+		Move();
+
+	ENGINE::CGameObject::Update();
+
+	return 0;
+}
+
+void CPlayer::Render(void)
+{
+	LPDIRECT3DDEVICE9 pDevice = ENGINE::GetDevice();
+	pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+	pDevice->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+	pDevice->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+	pDevice->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+
+	pDevice->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
+	pDevice->SetRenderState(D3DRS_ALPHAREF, 0x00000088);
+	pDevice->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATER);
+
+	ENGINE::GetDevice()->SetTransform(D3DTS_WORLD, &m_pInfo->m_matWorld);
+
+	m_pTexture->Render(0);
+	m_pVIBuffer->Render();
+
+	pDevice->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+	pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+
+	//m_pOBBCollision->Render();
+}
+
+HRESULT CPlayer::Initialize(void)
+{
+	HRESULT hr = AddComponent();
+	if FAILED(hr)
+		return hr;
+
+	m_pCameraObserver = ENGINE::CCameraObserver::Create(this);
+	ENGINE::GetInfoSubject()->Subscribe(m_pCameraObserver);
+
+	m_fSpeed = 10.f;
+	ENGINE::GetInputManager()->GetMousePos(&m_ptMouseScroll);
+
+	return S_OK;
+}
+
+HRESULT CPlayer::AddComponent(void)
+{
+	ENGINE::CComponent* pComponent = NULL;
+
+	pComponent = ENGINE::CTransform::Create(this);
+	m_pInfo = static_cast<ENGINE::CTransform*>(pComponent);
+	m_ComponentMap.insert(COMPONENT_MAP::value_type(L"Players_Transform", pComponent));
+
+	pComponent = ENGINE::GetResourceManager()->CloneResource(this, RESOURCE_TYPE_STATIC, L"Buffer_Rectangle_Texture");
+	m_pVIBuffer = static_cast<ENGINE::CVIBuffer*>(pComponent);
+	m_ComponentMap.insert(COMPONENT_MAP::value_type(L"VIBuffer", pComponent));
+
+	pComponent = ENGINE::GetResourceManager()->CloneResource(this, RESOURCE_TYPE_DYNAMIC, L"Texture_Player");
+	m_pTexture = static_cast<ENGINE::CTexture*>(pComponent);
+	m_ComponentMap.insert(COMPONENT_MAP::value_type(L"Texture", pComponent));
+
+	m_pTerrainCollision = ENGINE::CTerrainCollision::Create(this);
+	m_ComponentMap.insert(COMPONENT_MAP::value_type(L"TerrainCollision", m_pTerrainCollision));
+
+	m_pMouseCollision = ENGINE::CMouseCollision::Create(this, 129, 129);
+	m_ComponentMap.insert(COMPONENT_MAP::value_type(L"MouseCollision", m_pMouseCollision));
+
+	//m_pOBBCollision = ENGINE::COBBCollision::Create(this, m_pInfo, 0.5f, 0.5f, 0.5f, new COBBStop(m_pInfo));
+	//m_ComponentMap.insert(COMPONENT_MAP::value_type(L"OBBCollision", m_pOBBCollision));
+
+	return S_OK;
+}
+
+void CPlayer::KeyCheck(void)
+{
+	POINT ptMouse;
+	ENGINE::GetInputManager()->GetMousePos(&ptMouse);
+
+	float fTimeDelta = ENGINE::GetTimeDelta();
+
+	if (ENGINE::GetInputManager()->IsKeyDown(KEY_STATE_UP))
+		m_pInfo->m_vPos += m_pInfo->m_vDir * m_fSpeed * fTimeDelta;
+	if (ENGINE::GetInputManager()->IsKeyDown(KEY_STATE_DOWN))
+		m_pInfo->m_vPos -= m_pInfo->m_vDir * m_fSpeed * fTimeDelta;
+	if (ENGINE::GetInputManager()->IsKeyDown(KEY_STATE_LEFT))
+	{
+		m_pInfo->m_vPos.x -= m_fSpeed * fTimeDelta * cosf(m_pInfo->m_pAngle[ANGLE_TYPE_Y]);
+		m_pInfo->m_vPos.z += m_fSpeed * fTimeDelta * sinf(m_pInfo->m_pAngle[ANGLE_TYPE_Y]);
+	}
+	if (ENGINE::GetInputManager()->IsKeyDown(KEY_STATE_RIGHT))
+	{
+		m_pInfo->m_vPos.x += m_fSpeed * fTimeDelta * cosf(m_pInfo->m_pAngle[ANGLE_TYPE_Y]);
+		m_pInfo->m_vPos.z -= m_fSpeed * fTimeDelta * sinf(m_pInfo->m_pAngle[ANGLE_TYPE_Y]);
+	}
+
+	if (ENGINE::GetInputManager()->IsKeyDown(KEY_STATE_Q))
+	{
+		m_pInfo->m_pAngle[ANGLE_TYPE_Y] -= D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+		m_bLeftTurnCheak = true;
+		m_bRightTurnCheak = false;
+		m_bKeyInput = true;
+	}
+	else if (ENGINE::GetInputManager()->IsKeyDown(KEY_STATE_W))
+	{
+		m_pInfo->m_pAngle[ANGLE_TYPE_Y] += D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+		m_bRightTurnCheak = true;
+		m_bLeftTurnCheak = false;
+		m_bKeyInput = true;
+	}
+	else if (ENGINE::GetInputManager()->IsKeyDown(KEY_STATE_RBUTTON))
+	{
+		if(ptMouse.x < m_ptMouseScroll.x)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] -= D3DXToRadian(10.f) * m_fSpeed * fTimeDelta * (m_ptMouseScroll.x - ptMouse.x) * 0.25f;
+			m_bLeftTurnCheak = true;
+			m_bRightTurnCheak = false;
+		}
+		else if(ptMouse.x > m_ptMouseScroll.x)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] += D3DXToRadian(10.f) * m_fSpeed * fTimeDelta * (ptMouse.x - m_ptMouseScroll.x) * 0.25f;
+			m_bRightTurnCheak = true;
+			m_bLeftTurnCheak = false;
+		}
+
+		m_bKeyInput = true;
+	}
+	else
+		m_bKeyInput = false;
+
+	m_ptMouseScroll = ptMouse;
+
+	/*if (ENGINE::GetInputManager()->IsKeyDown(KEY_STATE_LBUTTON))
+	{
+		m_bMove = true;
+		//m_pMouseCollision->PickTerrain(&m_vDestPos, m_pTerrainVertex);
+
+		D3DXVECTOR3 vTemp;
+		//m_pMouseCollision->PickObject(&vTemp, m_pVerticies, &m_pInfo->m_matWorld);
+	}*/
+}
+
+void CPlayer::MouseScroll(void)
+{
+	float fTimeDelta = ENGINE::GetTimeDelta();
+
+	if(m_bLeftTurnCheak == true)
+	{
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 0.f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > -0.785375f)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] -= D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] <= -0.785375f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = -0.785375f;
+				m_bLeftTurnCheak = false;
+			}
+		}
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 0.785375f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > 0.f)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] -= D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] <= 0.f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 0.f;
+				m_bLeftTurnCheak = false;
+			}
+		}
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 1.57075f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > 0.785375f)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] -= D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] <= 0.785375f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 0.785375f;
+				m_bLeftTurnCheak = false;
+			}
+		}
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 2.356125f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > 1.57075f)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] -= D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] <= 1.57075f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 1.57075f;
+				m_bLeftTurnCheak = false;
+			}
+		}
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 3.1415f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > 2.356125)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] -= D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] <= 2.356125f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 2.356125f;
+				m_bLeftTurnCheak = false;
+			}
+		}
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 3.926875f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > 3.1415f)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] -= D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] <= 3.1415f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 3.1415f;
+				m_bLeftTurnCheak = false;
+			}
+		}
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 4.71225f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > 3.926875f)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] -= D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] <= 3.926875f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 3.926875f;
+				m_bLeftTurnCheak = false;
+			}
+		}
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 5.497625f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > 4.71225f)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] -= D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] <= 4.71225f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 4.71225f;
+				m_bLeftTurnCheak = false;
+			}
+		}
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 6.283f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > 5.497625f)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] -= D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] <= 5.497625f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 5.497625f;
+				m_bLeftTurnCheak = false;
+			}
+		}
+	}
+	else if(m_bRightTurnCheak == true)
+	{
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 0.f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > -0.785375f)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] += D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] >= 0.f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 0.f;
+				m_bRightTurnCheak = false;
+			}
+		}
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 0.785375f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > 0.f)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] += D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] >= 0.785375f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 0.785375f;
+				m_bRightTurnCheak = false;
+			}
+		}
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 1.57075f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > 0.785375f)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] += D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] >= 1.57075f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 1.57075f;
+				m_bRightTurnCheak = false;
+			}
+		}
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 2.356125f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > 1.57075f)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] += D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] >= 2.356125f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 2.356125f;
+				m_bRightTurnCheak = false;
+			}
+		}
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 3.1415f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > 2.356125)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] += D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] >= 3.1415f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 3.1415f;
+				m_bRightTurnCheak = false;
+			}
+		}
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 3.926875f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > 3.1415f)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] += D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] >= 3.926875f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 3.926875f;
+				m_bRightTurnCheak = false;
+			}
+		}
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 4.71225f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > 3.926875f)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] += D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] >= 4.71225f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 4.71225f;
+				m_bRightTurnCheak = false;
+			}
+		}
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 5.497625f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > 4.71225f)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] += D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] >= 5.497625f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 5.497625f;
+				m_bRightTurnCheak = false;
+			}
+		}
+		if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] < 6.283f && m_pInfo->m_pAngle[ANGLE_TYPE_Y] > 5.497625f)
+		{
+			m_pInfo->m_pAngle[ANGLE_TYPE_Y] += D3DXToRadian(10.f) * m_fSpeed * fTimeDelta;
+			if(m_pInfo->m_pAngle[ANGLE_TYPE_Y] >= 6.283f)
+			{
+				m_pInfo->m_pAngle[ANGLE_TYPE_Y] = 0.f;
+				m_bRightTurnCheak = false;
+			}
+		}
+	}
+}
+
+void CPlayer::SetDirection(void)
+{
+	D3DXVec3TransformNormal(&m_pInfo->m_vDir, &D3DXVECTOR3(0.f, 0.f, 1.f), &m_pInfo->m_matWorld);
+	D3DXVec3Normalize(&m_pInfo->m_vDir, &m_pInfo->m_vDir);
+}
+
+void CPlayer::Move(void)
+{
+	D3DXVECTOR3		vDir;
+
+	vDir = m_vDestPos - m_pInfo->m_vPos;
+
+	float	fDistance = D3DXVec3Length(&vDir);
+	D3DXVec3Normalize(&vDir, &vDir);
+
+	m_pInfo->m_vPos += vDir * m_fSpeed * ENGINE::GetTimeDelta();
+
+	if(fDistance < 1.f)
+		m_bMove = false;
+}
+
+void CPlayer::Release(void)
+{
+	SAFE_DELETE(m_pCameraObserver);
+}

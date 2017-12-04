@@ -1,0 +1,57 @@
+#include "CameraObserver.h"
+
+#include "Export_Function.h"
+#include "Transform.h"
+
+ENGINE::CCameraObserver::CCameraObserver(ENGINE::CGameObject* _pOwner)
+:CObserver(_pOwner)
+{
+}
+
+ENGINE::CCameraObserver::~CCameraObserver(void)
+{
+
+}
+
+ENGINE::CCameraObserver* ENGINE::CCameraObserver::Create(ENGINE::CGameObject* _pOwner)
+{
+	return new CCameraObserver(_pOwner);
+}
+
+void ENGINE::CCameraObserver::Update(int _iMessage)
+{
+	const CInfoSubject::DATA_LIST* pDataList =
+		ENGINE::GetInfoSubject()->GetDataList(_iMessage);
+	if (pDataList == NULL)
+		return;
+
+	switch (_iMessage)
+	{
+	case MESSAGE_CAMERA_VIEW:
+		m_matView = *static_cast<D3DXMATRIX*>(pDataList->front());
+		break;
+
+	case MESSAGE_CAMERA_PROJECTION:
+		m_matProj = *static_cast<D3DXMATRIX*>(pDataList->front());
+		break;
+
+	case MESSAGE_CAMERA_INFO:
+		m_pInfo = static_cast<ENGINE::CTransform*>(pDataList->front());
+		break;
+	}
+}
+
+const D3DXMATRIX* ENGINE::CCameraObserver::GetViewMatrix(void)
+{
+	return &m_matView;
+}
+
+const D3DXMATRIX* ENGINE::CCameraObserver::GetProjMatrix(void)
+{
+	return &m_matProj;
+}
+
+const ENGINE::CTransform* ENGINE::CCameraObserver::GetInfo(void)
+{
+	return m_pInfo;
+}

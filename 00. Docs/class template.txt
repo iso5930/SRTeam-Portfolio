@@ -1,0 +1,33 @@
+// 내가 좋아하는 클래스 템플릿!
+// 클래스 새로 생성하면 긁어다 쓰면 되도록..
+
+#include "Engine_Include.h"
+
+BEGIN_NAMESPACE(ENGINE)
+class ENGINE_DLL_SPECIFIER CGameObject
+{
+	// member variable
+private:
+	// -
+
+	// member function
+public:
+	static CGameObject* Create(void);
+	int Update(void);
+	void Render(void);
+private:
+	HRESULT Initialize(void);
+	void Release(void);
+
+	// getter & setter
+public:
+	// -
+
+	// constructor & destructor
+private:
+	explicit CGameObject(void);
+public:
+	~CGameObject(void);
+	MAKE_UNCOPYABLE(CGameObject)
+};
+END_NAMESPACE
